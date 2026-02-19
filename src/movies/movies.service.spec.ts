@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, UpdateResult, DeleteResult } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { MoviesService } from './movies.service';
 import { Movie } from './entities/movie.entity';
@@ -51,12 +51,12 @@ describe('MoviesService', () => {
     const dto = { id: 1, title: 'New Movie' };
     const savedMovie = { ...dto } as Movie;
 
-    jest.spyOn(repo, 'create').mockReturnValue(savedMovie);
-    jest.spyOn(repo, 'save').mockResolvedValue(savedMovie);
+    const createSpy = jest.spyOn(repo, 'create').mockReturnValue(savedMovie);
+    const saveSpy = jest.spyOn(repo, 'save').mockResolvedValue(savedMovie);
 
     const result = await service.create(dto);
-    expect(repo.create).toHaveBeenCalledWith(dto);
-    expect(repo.save).toHaveBeenCalledWith(savedMovie);
+    expect(createSpy).toHaveBeenCalledWith(dto);
+    expect(saveSpy).toHaveBeenCalledWith(savedMovie);
     expect(result).toEqual(savedMovie);
   });
 
@@ -75,23 +75,36 @@ describe('MoviesService', () => {
   it('update() should update and return the movie', async () => {
     const dto = { title: 'Updated Title' };
     const movie = { id: 1, title: 'Updated Title' } as Movie;
+    const updateResult: UpdateResult = {
+      affected: 1,
+      raw: [],
+      generatedMaps: [],
+    };
 
-    jest.spyOn(repo, 'update').mockResolvedValue({ affected: 1 } as any);
+    const updateSpy = jest
+      .spyOn(repo, 'update')
+      .mockResolvedValue(updateResult);
     jest.spyOn(service, 'findOne').mockResolvedValue(movie); // Mock internal call
 
     const result = await service.update(1, dto);
-    expect(repo.update).toHaveBeenCalledWith(1, dto);
+    expect(updateSpy).toHaveBeenCalledWith(1, dto);
     expect(result).toEqual(movie);
   });
 
   it('remove() should delete a movie', async () => {
-    jest.spyOn(repo, 'delete').mockResolvedValue({ affected: 1 } as any);
+    const deleteResult: DeleteResult = { affected: 1, raw: [] };
+    const deleteSpy = jest
+      .spyOn(repo, 'delete')
+      .mockResolvedValue(deleteResult);
+
     await service.remove(1);
-    expect(repo.delete).toHaveBeenCalledWith(1);
+    expect(deleteSpy).toHaveBeenCalledWith(1);
   });
 
   it('remove() should throw NotFoundException if movie not found', async () => {
-    jest.spyOn(repo, 'delete').mockResolvedValue({ affected: 0 } as any);
+    const deleteResult: DeleteResult = { affected: 0, raw: [] };
+    jest.spyOn(repo, 'delete').mockResolvedValue(deleteResult);
+
     await expect(service.remove(999)).rejects.toThrow(NotFoundException);
   });
 });
